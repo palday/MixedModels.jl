@@ -126,6 +126,18 @@ end
     @test isapprox(std(fm)[3], [0.8234088395243269], atol=0.0001)
     @test isapprox(varest(fm), 0.6780020742644107, atol=0.0001)
     @test isapprox(logdet(fm), 101.0381339953986, atol=0.001)
+
+    fm2 = LMM(@formula(Y ~ (1 | H / c)), dat[:Pastes])
+    @test size(fm2) == (60, 1, 40, 2)
+    @test fm2.θ == ones(2)
+    @test lowerbd(fm2) == zeros(2)
+
+    fit!(fm2);
+
+    # H/c expands to H + H&c = H+G, but the blocks are re-ordered
+    @test fm.θ == fm2.θ
+    @test coef(fm) == coef(fm2)
+    @test std(fm) == std(fm2)
 end
 
 @testset "InstEval" begin
