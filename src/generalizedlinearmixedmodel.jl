@@ -114,6 +114,10 @@ function StatsBase.dof(m::GeneralizedLinearMixedModel)
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
 end
 
+function StatsBase.dof_residual(m::GeneralizedLinearMixedModel)::Int
+    nobs(m) - dof(m)
+end
+
 fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl,
     d::Distribution = Normal(), l::Link = canonicallink(d);
     wts = [],
