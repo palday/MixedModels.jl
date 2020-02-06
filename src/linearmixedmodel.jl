@@ -484,6 +484,74 @@ function likelihoodratiotest(m::LinearMixedModel...)
     )
 end
 
+"""
+    pblikelihoodratiotest(outer::LinearMixedModel, inner::LinearMixedModel)
+
+Likeihood ratio test applied to a pair of nested models, using a bootstrapped null distribution.
+
+The null distribution is bootstrapped
+
+Note that nesting of the models is not checked.  It is incumbent on the user to check this.
+"""
+function pblikelihoodratiotest(rng::AbstractRNG, outer::LinearMixedModel, inner::LinearMixedModel,
+    n::Integer; use_threads=false)
+    if dof(outer) < dof(inner)
+        outer, inner = inner, outer
+    end
+
+    y₀_outer = copy(response(outer))
+    y₀_inner = copy(response(inner))
+    # we need to do for in-place operations to work across threads
+    outer_threads = [outer]
+    inner_threads = [inner]
+
+    β, σ, θ = inner.β, inner.σ, inner.θ
+
+    if use_threads
+        Threads.resize_nthreads!(outer_threads)
+        Threads.resize_nthreads!(inner_threads)
+    end
+
+    # we use locks to guarantee thread-safety, but there might be better ways to do this for some RNGs
+    # see https://docs.julialang.org/en/v1.3/manual/parallel-computing/#Side-effects-and-mutable-function-arguments-1
+    # see https://docs.julialang.org/en/v1/stdlib/Future/index.html
+    rnglock = ReentrantLock()
+    bslrdist = replicate(n, use_threads=use_threads) do
+        minner = inner_threads[Threads.threadid()]
+        mouter = outer_threads[Threads.threadid()]
+
+        lr = -1
+        # apparently we can occasionally get negative LRs in practice?
+        # because we're simming form the null model
+        while lr < 0
+            lock(rnglock)
+            minner = simulate!(rng, minner, β = β, σ = σ, θ = θ)
+            unlock(rnglock)
+            refit!(minner)
+            refit!(mouter, response(minner))
+            #Threads.@spawn refit!(minner)
+            #Threads.@spawn refit!(mouter, response(minner))
+            lr = deviance(minner) - deviance(mouter)
+            lr >= 0 || @warn "negative LR treated as zero"
+        end
+        lr
+    end
+
+    Threads.@spawn refit!(outer, y₀_outer)
+    Threads.@spawn refit!(inner, y₀_inner)
+    outer = fetch(outer)
+    inner = fetch(inner)
+
+    lr = deviance(inner) - deviance(outer)
+    sort!(bslrdist)
+    argmax(isless.(bslrdist,lr)) / n
+end
+
+function pblikelihoodratiotest(outer::LinearMixedModel, inner::LinearMixedModel,
+    n::Integer; use_threads=false)
+    MixedModels.pblikelihoodratiotest(Random.GLOBAL_RNG, outer, inner, n, use_threads)
+end
+
 function StatsBase.modelmatrix(m::LinearMixedModel)
     fetrm = first(m.feterms)
     if fetrm.rank == size(fetrm, 2)

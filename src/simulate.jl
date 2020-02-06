@@ -56,7 +56,7 @@ The default random number generator is `Random.GLOBAL_RNG`.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
-    n::Integer,
+    nsamp::Integer,
     morig::LinearMixedModel{T};
     β = morig.β,
     σ = morig.σ,
@@ -79,7 +79,7 @@ function parametricbootstrap(
     # see https://docs.julialang.org/en/v1.3/manual/parallel-computing/#Side-effects-and-mutable-function-arguments-1
     # see https://docs.julialang.org/en/v1/stdlib/Future/index.html
     rnglock = ReentrantLock()
-    samp = replicate(n, use_threads=use_threads) do
+    samp = replicate(nsamp, use_threads=use_threads) do
         mod = m_threads[Threads.threadid()]
         local βsc = βsc_threads[Threads.threadid()]
         local θsc = θsc_threads[Threads.threadid()]
