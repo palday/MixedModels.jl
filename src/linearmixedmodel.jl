@@ -462,6 +462,11 @@ end
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> e2b9a16... bad merge
 """
     likelihoodratiotest(m::LinearMixedModel...)
 
@@ -529,12 +534,20 @@ function pblikelihoodratiotest(rng::AbstractRNG, outer::LinearMixedModel, inner:
             unlock(rnglock)
             refit!(minner)
             refit!(mouter, response(minner))
+<<<<<<< HEAD
             lr = deviance(minner) - deviance(mouter)
             lr >= 0 || @debug deviance.([minner,mouter])
+=======
+            #Threads.@spawn refit!(minner)
+            #Threads.@spawn refit!(mouter, response(minner))
+            lr = deviance(minner) - deviance(mouter)
+            lr >= 0 || @warn "negative LR treated as zero"
+>>>>>>> e2b9a16... bad merge
         end
         lr
     end
 
+<<<<<<< HEAD
     if use_threads
         Threads.@spawn refit!(outer, y₀_outer)
         Threads.@spawn refit!(inner, y₀_inner)
@@ -544,6 +557,12 @@ function pblikelihoodratiotest(rng::AbstractRNG, outer::LinearMixedModel, inner:
         refit!(outer, y₀_outer)
         refit!(inner, y₀_inner)
     end
+=======
+    Threads.@spawn refit!(outer, y₀_outer)
+    Threads.@spawn refit!(inner, y₀_inner)
+    outer = fetch(outer)
+    inner = fetch(inner)
+>>>>>>> e2b9a16... bad merge
 
     lr = deviance(inner) - deviance(outer)
     sort!(bslrdist)
@@ -552,9 +571,16 @@ end
 
 function pblikelihoodratiotest(outer::LinearMixedModel, inner::LinearMixedModel,
     n::Integer; use_threads=false)
+<<<<<<< HEAD
     pblikelihoodratiotest(Random.GLOBAL_RNG, outer, inner, n, use_threads=use_threads)
 end
 
+=======
+    MixedModels.pblikelihoodratiotest(Random.GLOBAL_RNG, outer, inner, n, use_threads)
+end
+
+>>>>>>> begin work on bootstrap lrt
+>>>>>>> e2b9a16... bad merge
 function StatsBase.modelmatrix(m::LinearMixedModel)
     fetrm = first(m.feterms)
     if fetrm.rank == size(fetrm, 2)
