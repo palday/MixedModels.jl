@@ -529,18 +529,21 @@ function pblikelihoodratiotest(rng::AbstractRNG, outer::LinearMixedModel, inner:
             unlock(rnglock)
             refit!(minner)
             refit!(mouter, response(minner))
-            #Threads.@spawn refit!(minner)
-            #Threads.@spawn refit!(mouter, response(minner))
             lr = deviance(minner) - deviance(mouter)
-            lr >= 0 || @warn "negative LR treated as zero"
+            lr >= 0 || @debug deviance.([minner,mouter])
         end
         lr
     end
 
-    Threads.@spawn refit!(outer, y₀_outer)
-    Threads.@spawn refit!(inner, y₀_inner)
-    outer = fetch(outer)
-    inner = fetch(inner)
+    if use_threads
+        Threads.@spawn refit!(outer, y₀_outer)
+        Threads.@spawn refit!(inner, y₀_inner)
+        outer = fetch(outer)
+        inner = fetch(inner)
+    else
+        refit!(outer, y₀_outer)
+        refit!(inner, y₀_inner)
+    end
 
     lr = deviance(inner) - deviance(outer)
     sort!(bslrdist)
@@ -549,7 +552,7 @@ end
 
 function pblikelihoodratiotest(outer::LinearMixedModel, inner::LinearMixedModel,
     n::Integer; use_threads=false)
-    MixedModels.pblikelihoodratiotest(Random.GLOBAL_RNG, outer, inner, n, use_threads)
+    pblikelihoodratiotest(Random.GLOBAL_RNG, outer, inner, n, use_threads=use_threads)
 end
 
 function StatsBase.modelmatrix(m::LinearMixedModel)
